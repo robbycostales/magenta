@@ -502,7 +502,8 @@ class Model(object):
         all_pitches.extend([k]*v)
       pitches = np.random.choice(all_pitches, n_samples)
     z = self.generate_z(len(pitches))
-    return self.generate_samples_from_z(z, pitches, max_audio_length)
+    # return self.generate_samples_from_z(z, pitches, max_audio_length) # original
+    return self.generate_samples_from_z(z, pitches, max_audio_length), z # DEBUG: save latent vectors for later analaysis
 
   def generate_samples_from_z(self, z, pitches, max_audio_length=64000):
     """Generate fake samples for given latents and pitches.
@@ -531,9 +532,14 @@ class Model(object):
       start = i * self.batch_size
       end = (i + 1) * self.batch_size
 
+      st = time.time()
       waves = self.sess.run(self.fake_waves_ph,
                             feed_dict={self.labels_ph: labels[start:end],
                                        self.noises_ph: z[start:end]})
+      et = time.time()
+      print("gen time: {:.2f} (s)".format(et-st))
+      print("time per sample: {:.4f} (s)".format((et-st)/n_samples))
+
       # Trim waves
       for wave in waves:
         waves_list.append(wave[:max_audio_length, 0])

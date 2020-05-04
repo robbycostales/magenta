@@ -9,3 +9,6 @@ build/
 *.DS_Store
 .vscode/*
 .idea/
+
+*all_instruments*
+*acoustic_only*

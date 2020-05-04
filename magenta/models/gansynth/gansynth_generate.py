@@ -34,6 +34,11 @@ from magenta.models.gansynth.lib import model as lib_model
 from magenta.models.gansynth.lib import util
 import tensorflow.compat.v1 as tf
 
+import pickle # DEBUG: use pickle for saving latent vectors of generated samples
+import numpy as np
+
+from diversity import get_flagged_latents, get_flagged_waves, get_flagged_waves_par # DEBUG: own module for flagging similar samples
+
 
 absl.flags.DEFINE_string('ckpt_dir',
                          '/tmp/gansynth/acoustic_only',
@@ -95,11 +100,33 @@ def main(unused_argv):
     gu.save_wav(audio_clip, fname)
   else:
     # Otherwise, just generate a batch of random sounds
-    waves = model.generate_samples(FLAGS.batch_size)
+
+    # waves = model.generate_samples(FLAGS.batch_size) # original
+    waves, z = model.generate_samples(FLAGS.batch_size, pitch=44) #DEBUG: generate on singular pitch (range: 24-84), return latent vectors
+
     # Write the wave files
     for i in range(len(waves)):
       fname = os.path.join(output_dir, 'generated_{}.wav'.format(i))
       gu.save_wav(waves[i], fname)
+
+    # DEBUG: write z to file for later analysis
+    fname = os.path.join(output_dir, 'z.p')
+    pickle.dump(z, open(fname, 'wb'))
+
+    # DEBUG: flag samples based on similar latent variables
+    flagged = get_flagged_latents(z, n=10)
+    print("\nflagged (z):")
+    for i in flagged:
+        print(i)
+
+    # DEBUG: flag samples based on similar waveforms
+    flagged = get_flagged_waves_par(waves, n=10, frac=0.01)
+    print("\nflagged (waves):")
+    for i in flagged:
+        print(i)
+        fname = os.path.join(output_dir, '_sim_{}-{}.wav'.format(i[0][0], i[0][1]))
+        gu.save_wav(np.array(list(waves[i[0][0]])+list(waves[i[0][1]])), fname)
+
 
 
 def console_entry_point():
